@@ -1,342 +1,412 @@
-Paste everything below into nano Guide.md, save, commit, and it will render correctly on GitHub:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Red/Blue Coincidence Analysis Pipeline</title>
+</head>
+<body>
 
-Red/Blue Coincidence Analysis Pipeline
-This document explains how to use the Python script for batch analysis of red/blue feature coincidence in paired TIFF images (Opera Phenix data). It assumes filenames like:
+<h1>Red/Blue Coincidence Analysis Pipeline</h1>
 
-...-ch1....tif = red channel
-...-ch2....tif = blue channel
-The script:
+<p>
+This document explains how to use the Python script for batch analysis of red/blue feature
+coincidence in paired TIFF images (Opera Phenix data). It assumes filenames like:
+</p>
 
-Pairs ch1 and ch2 images in each folder
-Detects spots in red and blue
-Quantifies coincidence between channels
-Computes densities (per µm²)
-Computes per-spot metrics and coincidence flags
-Saves per-image results and per-folder/global summaries
-1. Requirements
-You need Python 3 and the following packages:
+<ul>
+  <li><code>...-ch1....tif</code> = red channel</li>
+  <li><code>...-ch2....tif</code> = blue channel</li>
+</ul>
 
-numpy
-pandas
-scikit-image (skimage)
-matplotlib (not strictly required in the current version, but often installed with scikit-image)
-scipy (not used for plotting now, but may be present from earlier versions)
-Install them (if needed) with:
+<p>The script:</p>
 
-pip install numpy pandas scikit-image
-Copy Code
-If you use conda:
+<ul>
+  <li>Pairs <code>ch1</code> and <code>ch2</code> images in each folder</li>
+  <li>Detects spots in red and blue</li>
+  <li>Quantifies coincidence between channels</li>
+  <li>Computes densities (per µm²)</li>
+  <li>Computes per-spot metrics and coincidence flags</li>
+  <li>Saves per-image results and per-folder/global summaries</li>
+</ul>
 
-conda install numpy pandas scikit-image
-Copy Code
-2. File and folder structure
-2.1 Input images
-The script expects one file per channel:
+<hr>
 
-Red (ch1): e.g.
-r02c07f01p01-ch1sk1fk1fl1.tiff
-Blue (ch2): e.g.
-r02c07f01p01-ch2sk1fk1fl1.tiff
-For each red file, the script looks for the corresponding blue file by replacing ch1 with ch2 in the filename.
+<h2>1. Requirements</h2>
 
-Images must:
+<p>You need Python 3 and the following packages:</p>
 
-Be 2D grayscale TIFFs (no channel dimension inside the file).
-Have matching shapes for red and blue in each pair.
-2.2 Data folders (pathList)
-You define a list of folders to analyse, for example:
+<ul>
+  <li><code>numpy</code></li>
+  <li><code>pandas</code></li>
+  <li><code>scikit-image</code> (<code>skimage</code>)</li>
+  <li><code>matplotlib</code> (not strictly required in the current version, but often installed with <code>scikit-image</code>)</li>
+  <li><code>scipy</code> (not used for plotting now, but may be present from earlier versions)</li>
+</ul>
 
-pathList = [
+<p>Install them (if needed) with:</p>
+
+<pre><code class="language-bash">pip install numpy pandas scikit-image
+</code></pre>
+
+<p>If you use <code>conda</code>:</p>
+
+<pre><code class="language-bash">conda install numpy pandas scikit-image
+</code></pre>
+
+<hr>
+
+<h2>2. File and folder structure</h2>
+
+<h3>2.1 Input images</h3>
+
+<p>The script expects <strong>one file per channel</strong>:</p>
+
+<ul>
+  <li>Red (<code>ch1</code>): e.g. <code>r02c07f01p01-ch1sk1fk1fl1.tiff</code></li>
+  <li>Blue (<code>ch2</code>): e.g. <code>r02c07f01p01-ch2sk1fk1fl1.tiff</code></li>
+</ul>
+
+<p>
+For each red file, the script looks for the corresponding blue file by replacing
+<code>ch1</code> with <code>ch2</code> in the filename.
+</p>
+
+<p>Images must:</p>
+<ul>
+  <li>Be 2D grayscale TIFFs (no channel dimension inside the file).</li>
+  <li>Have matching shapes for red and blue in each pair.</li>
+</ul>
+
+<h3>2.2 Data folders (<code>pathList</code>)</h3>
+
+<p>You define a list of folders to analyse, for example:</p>
+
+<pre><code class="language-python">pathList = [
     r"/Volumes/T7/010526_Sample_Panel_OperaPhenix /RawData_EV/Test/",
     r"/Volumes/T7/010526_Sample_Panel_OperaPhenix /RawData_EV/Test2/",
 ]
-Copy Code
-Each folder in pathList:
+</code></pre>
 
-Contains TIFF files with ch1 and ch2 in their names.
-Will get:
-One *_results subfolder per image pair.
-A per-folder image_summary_metrics.tsv.
-A per-folder global_mean_density_intensity.tsv.
-2.3 Root folder (top_root_directory)
-You also set a “root” directory where the script writes global summary files:
+<p>Each folder in <code>pathList</code>:</p>
 
-top_root_directory = r"/Volumes/T7/010526_Sample_Panel_OperaPhenix /RawData_EV/"
-Copy Code
-This root will receive:
+<ul>
+  <li>Contains TIFF files with <code>ch1</code> and <code>ch2</code> in their names.</li>
+  <li>Will get:
+    <ul>
+      <li>One <code>*_results</code> subfolder per image pair.</li>
+      <li>A per-folder <code>image_summary_metrics.tsv</code>.</li>
+      <li>A per-folder <code>global_mean_density_intensity.tsv</code>.</li>
+    </ul>
+  </li>
+</ul>
 
-image_summary_metrics.tsv (all image pairs from all folders combined)
-summary_CV_metrics.tsv
-global_mean_density_intensity.tsv
-per_folder_count_and_density_stats.tsv
+<h3>2.3 Root folder (<code>top_root_directory</code>)</h3>
+
+<p>You also set a “root” directory where the script writes global summary files:</p>
+
+<pre><code class="language-python">top_root_directory = r"/Volumes/T7/010526_Sample_Panel_OperaPhenix /RawData_EV/"
+</code></pre>
+
+<p>This root will receive:</p>
+
+<ul>
+  <li><code>image_summary_metrics.tsv</code> (all image pairs from all folders combined)</li>
+  <li><code>summary_CV_metrics.tsv</code></li>
+  <li><code>global_mean_density_intensity.tsv</code></li>
+  <li><code>per_folder_count_and_density_stats.tsv</code></li>
+</ul>
+
+<p>
 Make sure the path (including spaces) exactly matches the real folder name.
+</p>
 
-3. What the script does (conceptual overview)
-For each folder in pathList:
+<hr>
 
-Finds all red (ch1) TIFF files.
-For each red file, finds the matching blue (ch2) file.
-Loads red and blue images.
-Optionally crops to a rectangular ROI.
-Thresholds each channel (fixed value, Otsu, or Yen).
-Labels spots in each binary mask.
-Computes:
-Red spot count
-Blue spot count
-Number of red spots overlapping blue (coincident)
-Fraction of red spots that are coincident
-Densities (counts per µm²) for red, blue, and coincident spots
-A rotated / translated blue control and its coincidence with red
-Computes per-spot properties for each channel:
-Centroid (x, y)
-Area (pixels and µm²)
-Sum / mean / max intensity
-Whether each spot is coincident or not
-Saves:
-Binary images (red_binary.tif, blue_binary.tif)
-Per-spot CSVs (red_spots.csv, blue_spots.csv)
-One row of summary metrics per image pair.
-After processing all folders and image pairs, it:
+<h2>3. What the script does (conceptual overview)</h2>
 
-Combines all rows into a global table.
-Writes global summary files in top_root_directory.
-Writes per-folder summary files back into each data folder.
-4. Key parameters you may want to edit
-Near the top of the script you’ll see the user parameters.
+<p>For <strong>each folder</strong> in <code>pathList</code>:</p>
 
-4.1 Pixel size
-pixel_size = 591  # nm
-Copy Code
-Pixel size in nanometres.
-Used to calculate area in µm² for densities and spot areas.
-If your imaging settings change, update this value.
-4.2 Root directory and data folders
-top_root_directory = r".../RawData_EV/"
+<ol>
+  <li>Finds all red (<code>ch1</code>) TIFF files.</li>
+  <li>For each red file, finds the matching blue (<code>ch2</code>) file.</li>
+  <li>Loads red and blue images.</li>
+  <li>Optionally crops to a rectangular ROI.</li>
+  <li>Thresholds each channel (fixed value, Otsu, or Yen).</li>
+  <li>Labels spots in each binary mask.</li>
+  <li>Computes:
+    <ul>
+      <li>Red spot count</li>
+      <li>Blue spot count</li>
+      <li>Number of red spots overlapping blue (coincident)</li>
+      <li>Fraction of red spots that are coincident</li>
+      <li>Densities (counts per µm²) for red, blue, and coincident spots</li>
+      <li>A rotated / translated blue control and its coincidence with red</li>
+    </ul>
+  </li>
+  <li>Computes per-spot properties for each channel:
+    <ul>
+      <li>Centroid (x, y)</li>
+      <li>Area (pixels and µm²)</li>
+      <li>Sum / mean / max intensity</li>
+      <li>Whether each spot is coincident or not</li>
+    </ul>
+  </li>
+  <li>Saves:
+    <ul>
+      <li>Binary images (<code>red_binary.tif</code>, <code>blue_binary.tif</code>)</li>
+      <li>Per-spot CSVs (<code>red_spots.csv</code>, <code>blue_spots.csv</code>)</li>
+      <li>One row of summary metrics per image pair.</li>
+    </ul>
+  </li>
+</ol>
+
+<p>After processing <strong>all folders and image pairs</strong>, it:</p>
+
+<ol start="10">
+  <li>Combines all rows into a global table.</li>
+  <li>Writes global summary files in <code>top_root_directory</code>.</li>
+  <li>Writes per-folder summary files back into each data folder.</li>
+</ol>
+
+<hr>
+
+<h2>4. Key parameters you may want to edit</h2>
+
+<p>Near the top of the script you’ll see the user parameters.</p>
+
+<h3>4.1 Pixel size</h3>
+
+<pre><code class="language-python">pixel_size = 591  # nm
+</code></pre>
+
+<ul>
+  <li>Pixel size in nanometres.</li>
+  <li>Used to calculate area in µm² for densities and spot areas.</li>
+  <li>If your imaging settings change, update this value.</li>
+</ul>
+
+<h3>4.2 Root directory and data folders</h3>
+
+<pre><code class="language-python">top_root_directory = r".../RawData_EV/"
 
 pathList = [
     r".../RawData_EV/Test/",
     r".../RawData_EV/Test2/",
 ]
-Copy Code
-top_root_directory is where global TSVs are written.
-pathList contains folders to analyse.
-Paths with spaces must be exact.
-4.3 Thresholding mode
-THRESHOLD_MODE = "fixed"   # or "otsu" or "yen"
+</code></pre>
+
+<ul>
+  <li><code>top_root_directory</code> is where global TSVs are written.</li>
+  <li><code>pathList</code> contains folders to analyse.</li>
+  <li>Paths with spaces must be exact.</li>
+</ul>
+
+<h3>4.3 Thresholding mode</h3>
+
+<pre><code class="language-python">THRESHOLD_MODE = "fixed"   # or "otsu" or "yen"
 RED_FIXED_THRESHOLD = 200
 BLUE_FIXED_THRESHOLD = 200
-Copy Code
-"fixed": use the given numeric thresholds.
-"otsu": compute threshold per image using Otsu’s method.
-"yen": compute threshold per image using Yen’s method.
-If you use "otsu" or "yen", the RED_FIXED_THRESHOLD and BLUE_FIXED_THRESHOLD values are ignored.
+</code></pre>
 
-4.4 ROI (Region of Interest)
-USE_ROI = False
+<ul>
+  <li><code>"fixed"</code>: use the given numeric thresholds.</li>
+  <li><code>"otsu"</code>: compute threshold per image using Otsu’s method.</li>
+  <li><code>"yen"</code>: compute threshold per image using Yen’s method.</li>
+</ul>
+
+<p>
+If you use <code>"otsu"</code> or <code>"yen"</code>, the <code>RED_FIXED_THRESHOLD</code> and
+<code>BLUE_FIXED_THRESHOLD</code> values are ignored.
+</p>
+
+<h3>4.4 ROI (Region of Interest)</h3>
+
+<pre><code class="language-python">USE_ROI = False
 ROI_X = (20, 1060)   # (xmin, xmax) in pixels
 ROI_Y = (20, 1060)   # (ymin, ymax) in pixels
-Copy Code
-If USE_ROI = False, the script analyses the full image.
-If USE_ROI = True, each image is cropped to the given rectangle.
-ROI is clipped to stay within image bounds.
-5. Outputs
-5.1 Per-image / per-pair outputs
-For each red/blue image pair, a folder like:
+</code></pre>
 
-<that_folder>/<base_name>_results/
-Copy Code
-is created, containing:
+<ul>
+  <li>If <code>USE_ROI = False</code>, the script analyses the full image.</li>
+  <li>If <code>USE_ROI = True</code>, each image is cropped to the given rectangle.</li>
+  <li>ROI is clipped to stay within image bounds.</li>
+</ul>
 
-red_binary.tif
+<hr>
 
-Binary mask (0/255) of red spots after thresholding.
-blue_binary.tif
+<h2>5. Outputs</h2>
 
-Binary mask (0/255) of blue spots after thresholding.
-red_spots.csv
+<h3>5.1 Per-image / per-pair outputs</h3>
 
-One row per red spot with columns:
-label_id
-centroid_y, centroid_x
-area_pixels, area_um2
-sum_intensity, mean_intensity, max_intensity
-is_coincident (1 if this red spot overlaps the blue mask)
-blue_spots.csv
+<p>For each red/blue image pair, a folder like:</p>
 
-Same columns as red_spots.csv, but for blue spots, and is_coincident indicates overlap with the red mask.
-5.2 Per-image summary table (global)
-In top_root_directory:
+<pre><code>&lt;that_folder&gt;/&lt;base_name&gt;_results/
+</code></pre>
 
-image_summary_metrics.tsv
-This file has one row per image pair (per folder), with columns such as:
+<p>is created, containing:</p>
 
-Paths and names:
-red_image_path, blue_image_path, red_image_name, blue_image_name, folder, roi_info
-Thresholds:
-red_threshold, blue_threshold, threshold_mode
-Counts:
-red_count, blue_count, coincident_count,
-coincident_count_rot90px1000 (control)
-fraction_red_coincident
-Densities (per µm²):
-red_density_per_um2, blue_density_per_um2
-coincident_density_per_um2
-coincident_density_rot90px1000_per_um2
-Basic intensity metrics:
-red_spot_sum_mean, red_spot_sum_sd
-blue_spot_sum_mean, blue_spot_sum_sd
-5.3 Global summary tables (root)
-In top_root_directory you also get:
+<ol>
+  <li><code>red_binary.tif</code>
+    <ul>
+      <li>Binary mask (0/255) of red spots after thresholding.</li>
+    </ul>
+  </li>
+  <li><code>blue_binary.tif</code>
+    <ul>
+      <li>Binary mask (0/255) of blue spots after thresholding.</li>
+    </ul>
+  </li>
+  <li><code>red_spots.csv</code>
+    <ul>
+      <li>One row per red spot with columns:
+        <ul>
+          <li><code>label_id</code></li>
+          <li><code>centroid_y</code>, <code>centroid_x</code></li>
+          <li><code>area_pixels</code>, <code>area_um2</code></li>
+          <li><code>sum_intensity</code>, <code>mean_intensity</code>, <code>max_intensity</code></li>
+          <li><code>is_coincident</code> (1 if this red spot overlaps the blue mask)</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><code>blue_spots.csv</code>
+    <ul>
+      <li>Same columns as <code>red_spots.csv</code>, but for blue spots, and
+      <code>is_coincident</code> indicates overlap with the red mask.</li>
+    </ul>
+  </li>
+</ol>
 
-summary_CV_metrics.tsv
+<h3>5.2 Per-image summary table (global)</h3>
 
-One row per metric (e.g. red_density_per_um2, blue_spot_sum_mean).
-Columns:
-metric
-mean_across_image_pairs
-sd_across_image_pairs
-cv_across_image_pairs
-global_mean_density_intensity.tsv
+<p>In <code>top_root_directory</code>:</p>
 
-One row per metric (e.g. red_count, red_density_per_um2, red_spot_sum_mean).
-Columns:
-metric
-global_mean
-global_sd
-per_folder_count_and_density_stats.tsv
+<ul>
+  <li><code>image_summary_metrics.tsv</code></li>
+</ul>
 
-One row per input folder (per pathList entry).
-Columns include:
-folder
-red_count_mean, red_count_sd, red_count_cv
-blue_count_mean, blue_count_sd, blue_count_cv
-coincident_count_mean, coincident_count_sd, coincident_count_cv
-red_density_per_um2_mean, red_density_per_um2_sd, red_density_per_um2_cv
-blue_density_per_um2_mean, …
-coincident_density_per_um2_mean, …
-coincident_density_rot90px1000_per_um2_mean, …
-5.4 Per-folder summary files (inside each data folder)
-Inside each folder in pathList, e.g.:
+<p>This file has one row per image pair (per folder), with columns such as:</p>
 
-.../RawData_EV/Test/
-.../RawData_EV/Test2/
-you will also get:
+<ul>
+  <li>Paths and names:
+    <ul>
+      <li><code>red_image_path</code>, <code>blue_image_path</code>, <code>red_image_name</code>, <code>blue_image_name</code>, <code>folder</code>, <code>roi_info</code></li>
+    </ul>
+  </li>
+  <li>Thresholds:
+    <ul>
+      <li><code>red_threshold</code>, <code>blue_threshold</code>, <code>threshold_mode</code></li>
+    </ul>
+  </li>
+  <li>Counts:
+    <ul>
+      <li><code>red_count</code>, <code>blue_count</code>, <code>coincident_count</code>,</li>
+      <li><code>coincident_count_rot90px1000</code> (control)</li>
+      <li><code>fraction_red_coincident</code></li>
+    </ul>
+  </li>
+  <li>Densities (per µm²):
+    <ul>
+      <li><code>red_density_per_um2</code>, <code>blue_density_per_um2</code></li>
+      <li><code>coincident_density_per_um2</code></li>
+      <li><code>coincident_density_rot90px1000_per_um2</code></li>
+    </ul>
+  </li>
+  <li>Basic intensity metrics:
+    <ul>
+      <li><code>red_spot_sum_mean</code>, <code>red_spot_sum_sd</code></li>
+      <li><code>blue_spot_sum_mean</code>, <code>blue_spot_sum_sd</code></li>
+    </ul>
+  </li>
+</ul>
 
-image_summary_metrics.tsv
+<h3>5.3 Global summary tables (root)</h3>
 
-Same structure as the global file, but only rows for that specific folder.
-global_mean_density_intensity.tsv
+<p>In <code>top_root_directory</code> you also get:</p>
 
-Means and SDs computed only over that folder’s images.
-6. How to run the script
-Open a terminal.
+<ol>
+  <li><code>summary_CV_metrics.tsv</code>
+    <ul>
+      <li>One row per metric (e.g. <code>red_density_per_um2</code>, <code>blue_spot_sum_mean</code>).</li>
+      <li>Columns:
+        <ul>
+          <li><code>metric</code></li>
+          <li><code>mean_across_image_pairs</code></li>
+          <li><code>sd_across_image_pairs</code></li>
+          <li><code>cv_across_image_pairs</code></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><code>global_mean_density_intensity.tsv</code>
+    <ul>
+      <li>One row per metric (e.g. <code>red_count</code>, <code>red_density_per_um2</code>, <code>red_spot_sum_mean</code>).</li>
+      <li>Columns:
+        <ul>
+          <li><code>metric</code></li>
+          <li><code>global_mean</code></li>
+          <li><code>global_sd</code></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><code>per_folder_count_and_density_stats.tsv</code>
+    <ul>
+      <li>One row per input folder (per <code>pathList</code> entry).</li>
+      <li>Columns include:
+        <ul>
+          <li><code>folder</code></li>
+          <li><code>red_count_mean</code>, <code>red_count_sd</code>, <code>red_count_cv</code></li>
+          <li><code>blue_count_mean</code>, <code>blue_count_sd</code>, <code>blue_count_cv</code></li>
+          <li><code>coincident_count_mean</code>, <code>coincident_count_sd</code>, <code>coincident_count_cv</code></li>
+          <li><code>red_density_per_um2_mean</code>, <code>red_density_per_um2_sd</code>, <code>red_density_per_um2_cv</code></li>
+          <li><code>blue_density_per_um2_mean</code>, …</li>
+          <li><code>coincident_density_per_um2_mean</code>, …</li>
+          <li><code>coincident_density_rot90px1000_per_um2_mean</code>, …</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ol>
 
-Navigate to the folder containing your script, for example:
+<h3>5.4 Per-folder summary files (inside each data folder)</h3>
 
-cd /path/to/your/script
-Copy Code
-Make sure the script is executable (optional):
+<p>Inside each folder in <code>pathList</code>, e.g.:</p>
 
-chmod +x red_blue_coincidence.py
-Copy Code
-Run the script with Python:
+<ul>
+  <li><code>.../RawData_EV/Test/</code></li>
+  <li><code>.../RawData_EV/Test2/</code></li>
+</ul>
 
-python red_blue_coincidence.py
-Copy Code
-or, if executable and with a proper shebang:
+<p>you will also get:</p>
 
-./red_blue_coincidence.py
-Copy Code
-While running, you’ll see messages like:
+<ol>
+  <li><code>image_summary_metrics.tsv</code>
+    <ul>
+      <li>Same structure as the global file, but only rows for that specific folder.</li>
+    </ul>
+  </li>
+  <li><code>global_mean_density_intensity.tsv</code>
+    <ul>
+      <li>Means and SDs computed only over that folder’s images.</li>
+    </ul>
+  </li>
+</ol>
 
-Processing pair: red=..., blue=...
-Analysing region: ...
-X features were detected in the Red ROI.
-Updates about summary files being written.
-7. Common adjustments
-7.1 Changing thresholds
-If you find you are over- or under-detecting spots:
+<hr>
 
-To try Otsu automatically:
+<h2>6. How to run the script</h2>
 
-THRESHOLD_MODE = "otsu"
-Copy Code
-To refine fixed thresholds:
+<ol>
+  <li>Open a terminal.</li>
+  <li>Navigate to the folder containing your script, for example:
+    <pre><code class="language-bash">cd /path/to/your/script
+</code></pre>
+  </li>
+  <li>Make sure the script is executable (optional):
+    <pre><code class="language-bash">chmod +x red_blue_coincidence.py
+</code></pre>
+  </li>
+  <li>Run the script with Python:
+    <pre><
 
-THRESHOLD_MODE = "fixed"
-RED_FIXED_THRESHOLD = 150  # example
-BLUE_FIXED_THRESHOLD = 180
-Copy Code
-7.2 Changing ROI
-If you want to exclude borders or artefacts:
-
-USE_ROI = True
-ROI_X = (100, 900)
-ROI_Y = (100, 900)
-Copy Code
-Make sure the ROI is within the image dimensions.
-
-7.3 Changing rotation control
-If you want a different control transformation (e.g. 180° rotation, different shift):
-
-blue_rt = rotate_translate_mask_wrap(
-    blue_binary,
-    angle_deg=180,
-    shift_x=500,
-    shift_y=0
-)
-Copy Code
-8. Interpreting the key metrics
-red_count, blue_count
-
-Number of detected spots per image in each channel.
-coincident_count
-
-Number of red spots that overlap at least one blue pixel.
-fraction_red_coincident
-
-coincident_count / red_count.
-Fraction of red spots that are “positive” for blue.
-*_density_per_um2
-
-Counts normalized by ROI area, giving feature density per µm².
-coincident_density_rot90px1000_per_um2
-
-Coincident density when the blue mask is rotated 90° and shifted by 1000 pixels with wrap-around.
-Acts as a geometric/random control.
-red_spot_sum_mean, blue_spot_sum_mean
-
-Mean per-spot summed intensity in each channel.
-Coarse measure of brightness per detected spot.
-red_spots.csv / blue_spots.csv per spot:
-
-is_coincident = 1 for spots that overlap the other channel’s binary mask.
-Useful for exporting to other analysis tools or visualisation.
-9. Troubleshooting
-No ch1 files found:
-
-Check naming: the script looks for *ch1*.tif or *ch1*.tiff.
-Check that paths in pathList are correct and accessible.
-Shape mismatch warnings:
-
-Indicates red and blue images of a pair don’t have exactly the same dimensions.
-Check the acquisition/export pipeline to ensure both channels are registered and cropped identically.
-“Expected 2D grayscale images” error:
-
-Your TIFF might contain multiple channels in one file.
-This script assumes one channel per file. You’d need to split channels beforehand or modify the script.
-No summary files created:
-
-The terminal should print “No image pairs processed; no summary files created.”
-Check that there are matching ch1 and ch2 pairs and that paths are correct.
-10. Extending the script
-Possible extensions:
-
-Add more per-spot regionprops (eccentricity, perimeter, major/minor axis).
-Add QC images that overlay detections on original intensities.
-Group folders by experimental conditions and compute group-level stats.
-If you plan to extend it, the main places to touch are:
-
-extract_regionprops_table (for more per-spot columns).
-The lists global_metrics, cv_metrics, and density_metrics (for which summary metrics are computed).
-The pathList and folder naming conventions (for different experiment layouts).
