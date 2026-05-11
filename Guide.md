@@ -408,5 +408,163 @@ ROI_Y = (20, 1060)   # (ymin, ymax) in pixels
 </code></pre>
   </li>
   <li>Run the script with Python:
-    <pre><
+    <pre><code class="language-bash">python red_blue_coincidence.py
+</code></pre>
+    <p>or, if executable and with a proper shebang:</p>
+    <pre><code class="language-bash">./red_blue_coincidence.py
+</code></pre>
+  </li>
+</ol>
+
+<p>While running, you’ll see messages like:</p>
+
+<ul>
+  <li><code>Processing pair: red=..., blue=...</code></li>
+  <li><code>Analysing region: ...</code></li>
+  <li><code>X features were detected in the Red ROI.</code></li>
+  <li>Updates about summary files being written.</li>
+</ul>
+
+<hr>
+
+<h2>7. Common adjustments</h2>
+
+<h3>7.1 Changing thresholds</h3>
+
+<p>If you find you are over- or under-detecting spots:</p>
+
+<p>To try Otsu automatically:</p>
+
+<pre><code class="language-python">THRESHOLD_MODE = "otsu"
+</code></pre>
+
+<p>To refine fixed thresholds:</p>
+
+<pre><code class="language-python">THRESHOLD_MODE = "fixed"
+RED_FIXED_THRESHOLD = 150  # example
+BLUE_FIXED_THRESHOLD = 180
+</code></pre>
+
+<h3>7.2 Changing ROI</h3>
+
+<p>If you want to exclude borders or artefacts:</p>
+
+<pre><code class="language-python">USE_ROI = True
+ROI_X = (100, 900)
+ROI_Y = (100, 900)
+</code></pre>
+
+<p>Make sure the ROI is within the image dimensions.</p>
+
+<h3>7.3 Changing rotation control</h3>
+
+<p>If you want a different control transformation (e.g. 180° rotation, different shift):</p>
+
+<pre><code class="language-python">blue_rt = rotate_translate_mask_wrap(
+    blue_binary,
+    angle_deg=180,
+    shift_x=500,
+    shift_y=0
+)
+</code></pre>
+
+<hr>
+
+<h2>8. Interpreting the key metrics</h2>
+
+<ul>
+  <li><code>red_count</code>, <code>blue_count</code>
+    <ul>
+      <li>Number of detected spots per image in each channel.</li>
+    </ul>
+  </li>
+  <li><code>coincident_count</code>
+    <ul>
+      <li>Number of red spots that overlap at least one blue pixel.</li>
+    </ul>
+  </li>
+  <li><code>fraction_red_coincident</code>
+    <ul>
+      <li><code>coincident_count / red_count</code>.</li>
+      <li>Fraction of red spots that are “positive” for blue.</li>
+    </ul>
+  </li>
+  <li><code>*_density_per_um2</code>
+    <ul>
+      <li>Counts normalized by ROI area, giving feature density per µm².</li>
+    </ul>
+  </li>
+  <li><code>coincident_density_rot90px1000_per_um2</code>
+    <ul>
+      <li>Coincident density when the blue mask is rotated 90° and shifted by 1000 pixels with wrap-around.</li>
+      <li>Acts as a geometric/random control.</li>
+    </ul>
+  </li>
+  <li><code>red_spot_sum_mean</code>, <code>blue_spot_sum_mean</code>
+    <ul>
+      <li>Mean per-spot summed intensity in each channel.</li>
+      <li>Coarse measure of brightness per detected spot.</li>
+    </ul>
+  </li>
+  <li><code>red_spots.csv</code> / <code>blue_spots.csv</code> per spot:
+    <ul>
+      <li><code>is_coincident</code> = 1 for spots that overlap the other channel’s binary mask.</li>
+      <li>Useful for exporting to other analysis tools or visualisation.</li>
+    </ul>
+  </li>
+</ul>
+
+<hr>
+
+<h2>9. Troubleshooting</h2>
+
+<ul>
+  <li><strong>No <code>ch1</code> files found</strong>:
+    <ul>
+      <li>Check naming: the script looks for <code>*ch1*.tif</code> or <code>*ch1*.tiff</code>.</li>
+      <li>Check that paths in <code>pathList</code> are correct and accessible.</li>
+    </ul>
+  </li>
+  <li><strong>Shape mismatch warnings</strong>:
+    <ul>
+      <li>Indicates red and blue images of a pair don’t have exactly the same dimensions.</li>
+      <li>Check the acquisition/export pipeline to ensure both channels are registered and cropped identically.</li>
+    </ul>
+  </li>
+  <li><strong>“Expected 2D grayscale images” error</strong>:
+    <ul>
+      <li>Your TIFF might contain multiple channels in one file.</li>
+      <li>This script assumes one channel per file. You’d need to split channels beforehand or modify the script.</li>
+    </ul>
+  </li>
+  <li><strong>No summary files created</strong>:
+    <ul>
+      <li>The terminal should print “No image pairs processed; no summary files created.”</li>
+      <li>Check that there are matching <code>ch1</code> and <code>ch2</code> pairs and that paths are correct.</li>
+    </ul>
+  </li>
+</ul>
+
+<hr>
+
+<h2>10. Extending the script</h2>
+
+<p>Possible extensions:</p>
+
+<ul>
+  <li>Add more per-spot <code>regionprops</code> (eccentricity, perimeter, major/minor axis).</li>
+  <li>Add QC images that overlay detections on original intensities.</li>
+  <li>Group folders by experimental conditions and compute group-level stats.</li>
+</ul>
+
+<p>If you plan to extend it, the main places to touch are:</p>
+
+<ul>
+  <li><code>extract_regionprops_table</code> (for more per-spot columns).</li>
+  <li>The lists <code>global_metrics</code>, <code>cv_metrics</code>, and <code>density_metrics</code> (for which summary metrics are computed).</li>
+  <li>The <code>pathList</code> and folder naming conventions (for different experiment layouts).</li>
+</ul>
+
+</body>
+</html>
 
